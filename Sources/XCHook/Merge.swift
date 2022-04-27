@@ -9,17 +9,17 @@ import Foundation
 
 final class Merge {
     private enum AlertEvents: String {
-        case plain = "Xcode.AlertEvents"
+        case plain   = "Xcode.AlertEvents"
         case fourOne = "Xcode.AlertEvents.4_1"
     }
 
     private enum AlertEvent: String {
-        case buildStart = "Xcode.AlertEvent.BuildStart"
-        case buildSucceeds = "Xcode.AlertEvent.BuildSucceeds"
-        case buildFails = "Xcode.AlertEvent.BuildFails"
-        case testingStart = "Xcode.AlertEvent.TestingStart"
+        case buildStart      = "Xcode.AlertEvent.BuildStart"
+        case buildSucceeds   = "Xcode.AlertEvent.BuildSucceeds"
+        case buildFails      = "Xcode.AlertEvent.BuildFails"
+        case testingStart    = "Xcode.AlertEvent.TestingStart"
         case testingSucceeds = "Xcode.AlertEvent.TestingSucceeds"
-        case testingFails = "Xcode.AlertEvent.TestingFails"
+        case testingFails    = "Xcode.AlertEvent.TestingFails"
 
         var shell: String {
             switch self {

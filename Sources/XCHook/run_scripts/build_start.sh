@@ -12,4 +12,4 @@ else
 fi
 
 logger -s "🔧 XCHook ${PROJECT_NAME} Build Start"
-swift ~/.xchook/Message.swift $PROJECT_NAME BUILD_START
+swift ${HOME}/.xchook/Message.swift $PROJECT_NAME BUILD_START

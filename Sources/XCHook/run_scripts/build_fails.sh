@@ -12,4 +12,4 @@ else
 fi
 
 logger -s "🔧 XCHook ${PROJECT_NAME} Build Fails"
-swift ~/.xchook/Message.swift $PROJECT_NAME BUILD_FAILS
+swift ${HOME}/.xchook/Message.swift $PROJECT_NAME BUILD_FAILS

@@ -1,8 +1,15 @@
+//
+//  XCHookRegister.swift
+//
+//
+//  Created by Takuto Nakamura on 2022/04/27.
+//
+
 import Foundation
 
-public final class XCHook {
+public final class XCHookRegister {
     enum AlertEvents: String {
-        case plain = "Xcode.AlertEvents"
+        case plain   = "Xcode.AlertEvents"
         case fourOne = "Xcode.AlertEvents.4_1"
     }
 
@@ -12,10 +19,8 @@ public final class XCHook {
     let xcodePath: String
 
     public init?() {
-        xchookPath = NSString(string: "~/.xchook")
-            .expandingTildeInPath
-        xcodePath = NSString(string: "~/Library/Preferences/com.apple.dt.Xcode.plist")
-            .expandingTildeInPath
+        xchookPath = NSHomeDirectory() + "/.xchook"
+        xcodePath = NSHomeDirectory() + "/Library/Preferences/com.apple.dt.Xcode.plist"
 
         shellOutput = Shell.run("test", "-e", xcodePath)
         guard shellOutput.succeeded else { return nil }

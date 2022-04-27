@@ -37,14 +37,16 @@ final class XCHookTests: XCTestCase {
 
     func testOverwritePlists() throws {
         let loadURL = try XCTUnwrap(sut.modulePlist(name: "xcode_before_overwrite"))
-        let writeURL = try XCTUnwrap(sut.modulePlist(name: "xcode_after_overwrite"))
+        let writeURL = loadURL.deletingLastPathComponent()
+            .appendingPathComponent("xcode_after_overwrite.plist")
         let actual = sut.overwritePlist(loadURL: loadURL, writeURL: writeURL)
         XCTAssertTrue(actual)
     }
 
     func testResetPlists() throws {
         let loadURL = try XCTUnwrap(sut.modulePlist(name: "xcode_before_reset"))
-        let writeURL = try XCTUnwrap(sut.modulePlist(name: "xcode_after_reset"))
+        let writeURL = loadURL.deletingLastPathComponent()
+            .appendingPathComponent("xcode_after_reset.plist")
         let actual = sut.resetPlist(loadURL: loadURL, writeURL: writeURL)
         XCTAssertTrue(actual)
     }
