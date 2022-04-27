@@ -33,7 +33,7 @@ final class Merge {
         }
     }
 
-    private let xcmonitorPath: String
+    private let xchookPath: String
     private let setupDict: [String: Any]
     private let resetDict: [String: Any]
     private let alertEventList: [AlertEvent] = [
@@ -45,15 +45,15 @@ final class Merge {
         .testingFails
     ]
 
-    init(_ xcmonitorPath: String) {
-        self.xcmonitorPath = xcmonitorPath
+    init(_ xchookPath: String) {
+        self.xchookPath = xchookPath
 
         let fullDict = alertEventList
             .reduce(into: [String: Any](), { partialResult, event in
                 partialResult[event.rawValue] = [
                     "Xcode.Alert.RunScript": [
                         "enabled": 1,
-                        "path": "\(xcmonitorPath)/run_scripts/\(event.shell)"
+                        "path": "\(xchookPath)/run_scripts/\(event.shell)"
                     ]
                 ]
             })

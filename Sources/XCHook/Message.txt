@@ -8,7 +8,7 @@
 import Foundation
 
 guard CommandLine.arguments.count == 3 else {
-    NSLog("🔧 XCMonitor:Message.swift \(CommandLine.arguments.count)")
+    NSLog("🔧 XCHook:Message.swift \(CommandLine.arguments.count)")
     exit(1)
 }
 let dict: [String: Any] = [
@@ -18,5 +18,5 @@ let dict: [String: Any] = [
 if let encodeData = try? JSONSerialization.data(withJSONObject: dict, options: []),
    let jsonStr = String(data: encodeData, encoding: .utf8) {
     let dnc = DistributedNotificationCenter.default()
-    dnc.post(name: Notification.Name("postFromXcodeSteps"), object: jsonStr)
+    dnc.post(name: Notification.Name("postFromXCHook"), object: jsonStr)
 }

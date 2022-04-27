@@ -1,38 +1,38 @@
 import XCTest
-@testable import XCMonitor
+@testable import XCHook
 
-final class XCMonitorTests: XCTestCase {
-    var sut: XCMonitor!
+final class XCHookTests: XCTestCase {
+    var sut: XCHook!
 
     override func setUpWithError() throws {
         super.setUp()
-        sut = try XCTUnwrap(XCMonitor())
+        sut = try XCTUnwrap(XCHook())
     }
 
-    func testCreateRemoveXCMonitorDirectory() {
-        sut.createXCMonitorDirectory()
-        let createActual = Shell.run("test", "-e", sut.xcmonitorPath).succeeded
+    func testCreateRemoveXCHookDirectory() {
+        sut.createXCHookDirectory()
+        let createActual = Shell.run("test", "-e", sut.xchookPath).succeeded
         XCTAssertTrue(createActual)
 
-        sut.removeXCMonitorDirectory()
-        let removeActual = Shell.run("test", "-e", sut.xcmonitorPath).succeeded
+        sut.removeXCHookDirectory()
+        let removeActual = Shell.run("test", "-e", sut.xchookPath).succeeded
         XCTAssertFalse(removeActual)
     }
 
     func testCopyFiles() {
-        sut.createXCMonitorDirectory()
+        sut.createXCHookDirectory()
         sut.copyFiles()
-        let xcmonitorActual = Shell.run("ls", "-1", sut.xcmonitorPath).outputs
-        XCTAssertTrue(xcmonitorActual[0] == "Message.swift")
-        XCTAssertTrue(xcmonitorActual[1] == "run_scripts")
-        let runScriptsActual = Shell.run("ls", "-1", "\(sut.xcmonitorPath)/run_scripts").outputs
+        let xchookActual = Shell.run("ls", "-1", sut.xchookPath).outputs
+        XCTAssertTrue(xchookActual[0] == "Message.swift")
+        XCTAssertTrue(xchookActual[1] == "run_scripts")
+        let runScriptsActual = Shell.run("ls", "-1", "\(sut.xchookPath)/run_scripts").outputs
         XCTAssertTrue(runScriptsActual[0] == "build_fails.sh")
         XCTAssertTrue(runScriptsActual[1] == "build_start.sh")
         XCTAssertTrue(runScriptsActual[2] == "build_succeeds.sh")
         XCTAssertTrue(runScriptsActual[3] == "testing_fails.sh")
         XCTAssertTrue(runScriptsActual[4] == "testing_start.sh")
         XCTAssertTrue(runScriptsActual[5] == "testing_succeeds.sh")
-        sut.removeXCMonitorDirectory()
+        sut.removeXCHookDirectory()
     }
 
     func testOverwritePlists() throws {

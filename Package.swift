@@ -4,19 +4,19 @@
 import PackageDescription
 
 let package = Package(
-    name: "XCMonitor",
+    name: "XCHook",
     platforms: [
         .macOS(.v11)
     ],
     products: [
         .library(
-            name: "XCMonitor",
-            targets: ["XCMonitor"]
+            name: "XCHook",
+            targets: ["XCHook"]
         )
     ],
     targets: [
         .target(
-            name: "XCMonitor",
+            name: "XCHook",
             dependencies: [],
             resources: [
                 .copy("plists"),
@@ -25,8 +25,8 @@ let package = Package(
             ]
         ),
         .testTarget(
-            name: "XCMonitorTests",
-            dependencies: ["XCMonitor"]
+            name: "XCHookTests",
+            dependencies: ["XCHook"]
         )
     ]
 )

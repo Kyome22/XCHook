@@ -11,5 +11,5 @@ else
   PROJECT_NAME=`basename "$XcodeWorkspace" .xcworkspace`
 fi
 
-logger -s "🔧 XCMonitor ${PROJECT_NAME} Testing Fails"
-swift ~/.xcmonitor/Message.swift $PROJECT_NAME TESTING_FAILS
+logger -s "🔧 XCHook ${PROJECT_NAME} Build Succeeds"
+swift ~/.xchook/Message.swift $PROJECT_NAME BUILD_SUCCEEDS

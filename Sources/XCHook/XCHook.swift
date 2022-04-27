@@ -1,6 +1,6 @@
 import Foundation
 
-public final class XCMonitor {
+public final class XCHook {
     enum AlertEvents: String {
         case plain = "Xcode.AlertEvents"
         case fourOne = "Xcode.AlertEvents.4_1"
@@ -8,11 +8,11 @@ public final class XCMonitor {
 
     private var shellOutput: ShellOutput
 
-    let xcmonitorPath: String
+    let xchookPath: String
     let xcodePath: String
 
     public init?() {
-        xcmonitorPath = NSString(string: "~/.xcmonitor")
+        xchookPath = NSString(string: "~/.xchook")
             .expandingTildeInPath
         xcodePath = NSString(string: "~/Library/Preferences/com.apple.dt.Xcode.plist")
             .expandingTildeInPath
@@ -21,18 +21,18 @@ public final class XCMonitor {
         guard shellOutput.succeeded else { return nil }
     }
 
-    func createXCMonitorDirectory() {
+    func createXCHookDirectory() {
         let fm = FileManager.default
-        if !fm.fileExists(atPath: xcmonitorPath) {
-            try? fm.createDirectory(atPath: xcmonitorPath,
+        if !fm.fileExists(atPath: xchookPath) {
+            try? fm.createDirectory(atPath: xchookPath,
                                     withIntermediateDirectories: true)
         }
     }
 
-    func removeXCMonitorDirectory() {
+    func removeXCHookDirectory() {
         let fm = FileManager.default
-        if fm.fileExists(atPath: xcmonitorPath) {
-            try? fm.removeItem(atPath: xcmonitorPath)
+        if fm.fileExists(atPath: xchookPath) {
+            try? fm.removeItem(atPath: xchookPath)
         }
     }
 
@@ -44,7 +44,7 @@ public final class XCMonitor {
         dirs.forEach { dir in
             let urlAt = URL(fileURLWithPath: resourcePath)
                 .appendingPathComponent(dir)
-            var urlTo = URL(fileURLWithPath: xcmonitorPath)
+            var urlTo = URL(fileURLWithPath: xchookPath)
                 .appendingPathComponent(dir)
             fm.fileExists(atPath: urlAt.path, isDirectory: &isDirectory)
             if isDirectory.boolValue && urlAt.lastPathComponent == "run_scripts" {
@@ -81,7 +81,7 @@ public final class XCMonitor {
     func overwritePlist(loadURL: URL, writeURL: URL) -> Bool {
         guard let plist = getPlist(url: loadURL) else { return false }
         do {
-            let newDict = Merge(xcmonitorPath).overwrite(dict: plist)
+            let newDict = Merge(xchookPath).overwrite(dict: plist)
             let data = try PropertyListSerialization.data(fromPropertyList: newDict, format: .binary, options: .zero)
             try data.write(to: writeURL, options: .atomic)
             return true
@@ -100,7 +100,7 @@ public final class XCMonitor {
     func resetPlist(loadURL: URL, writeURL: URL) -> Bool {
         guard let plist = getPlist(url: loadURL) else { return false }
         do {
-            let newDict = Merge(xcmonitorPath).reset(dict: plist)
+            let newDict = Merge(xchookPath).reset(dict: plist)
             let data = try PropertyListSerialization.data(fromPropertyList: newDict, format: .binary, options: .zero)
             try data.write(to: writeURL, options: .atomic)
             return true
@@ -116,13 +116,13 @@ public final class XCMonitor {
     }
 
     public func install() {
-        createXCMonitorDirectory()
+        createXCHookDirectory()
         copyFiles()
         overwritePlist()
     }
 
     public func uninstall() {
         resetPlist()
-        removeXCMonitorDirectory()
+        removeXCHookDirectory()
     }
 }
