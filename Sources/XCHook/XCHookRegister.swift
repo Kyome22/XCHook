@@ -13,16 +13,16 @@ public final class XCHookRegister {
         case fourOne = "Xcode.AlertEvents.4_1"
     }
 
-    private var shellOutput: ShellOutput
+    lazy var xchookPath: String = {
+        return homeDirectory() + "/.xchook"
+    }()
 
-    let xchookPath: String
-    let xcodePath: String
+    lazy var xcodePath: String = {
+        return homeDirectory() + "/Library/Preferences/com.apple.dt.Xcode.plist"
+    }()
 
     public init?() {
-        xchookPath = NSHomeDirectory() + "/.xchook"
-        xcodePath = NSHomeDirectory() + "/Library/Preferences/com.apple.dt.Xcode.plist"
-
-        shellOutput = Shell.run("test", "-e", xcodePath)
+        let shellOutput = Shell.run("test", "-e", xcodePath)
         guard shellOutput.succeeded else { return nil }
     }
 
@@ -129,5 +129,9 @@ public final class XCHookRegister {
     public func uninstall() {
         resetPlist()
         removeXCHookDirectory()
+    }
+
+    func homeDirectory() -> String {
+        return FileManager.homeDirectory ?? NSHomeDirectory()
     }
 }
