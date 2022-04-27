@@ -1,5 +1,5 @@
 //
-//  File.swift
+//  Message.swift
 //  
 //
 //  Created by Takuto Nakamura on 2022/04/09.
