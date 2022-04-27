@@ -25,14 +25,15 @@ public struct XCHookEvent {
 public final class XCHookReceiver {
     public static let shared = XCHookReceiver()
 
-    private var cancelables = Set<AnyCancellable>()
+    private var cancellables = Set<AnyCancellable>()
     private let xchookSubject = PassthroughSubject<XCHookEvent, Never>()
     public var xchookPublisher: AnyPublisher<XCHookEvent, Never> {
         return xchookSubject.eraseToAnyPublisher()
     }
 
     private init() {
-        DistributedNotificationCenter.default()
+        DistributedNotificationCenter
+            .default()
             .publisher(for: Notification.Name("postFromXCHook"))
             .sink { notification in
                 guard let jsonStr = notification.object as? String,
@@ -49,6 +50,6 @@ public final class XCHookReceiver {
                 let event = XCHookEvent(project: project, status: status)
                 self.xchookSubject.send(event)
             }
-            .store(in: &cancelables)
+            .store(in: &cancellables)
     }
 }
