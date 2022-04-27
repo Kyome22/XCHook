@@ -18,12 +18,12 @@ public enum XCHookStatus: String {
 }
 
 public struct XCHookEvent {
-    let project: String
-    let status: XCHookStatus
+    public let project: String
+    public let status: XCHookStatus
 }
 
 public final class XCHookReceiver {
-    static let shared = XCHookReceiver()
+    public static let shared = XCHookReceiver()
 
     private var cancelables = Set<AnyCancellable>()
     private let xchookSubject = PassthroughSubject<XCHookEvent, Never>()
