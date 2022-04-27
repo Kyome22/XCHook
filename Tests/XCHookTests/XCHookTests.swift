@@ -48,8 +48,4 @@ final class XCHookTests: XCTestCase {
         let actual = sut.resetPlist(loadURL: loadURL, writeURL: writeURL)
         XCTAssertTrue(actual)
     }
-
-    func testInstall() {
-        sut.install()
-    }
 }
