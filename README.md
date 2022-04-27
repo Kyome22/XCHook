@@ -1,3 +1,3 @@
 # XCHook
 
-To monitor building and testing status of Xcode.app
+Hooking the events (building and testing) of Xcode.app.
