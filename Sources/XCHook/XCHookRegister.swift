@@ -47,10 +47,8 @@ public final class XCHookRegister {
         let dirs = (try? fm.contentsOfDirectory(atPath: resourcePath)) ?? []
         var isDirectory: ObjCBool = false
         dirs.forEach { dir in
-            let urlAt = URL(fileURLWithPath: resourcePath)
-                .appendingPathComponent(dir)
-            var urlTo = URL(fileURLWithPath: xchookPath)
-                .appendingPathComponent(dir)
+            let urlAt = URL(fileURLWithPath: resourcePath).appendingPathComponent(dir)
+            var urlTo = URL(fileURLWithPath: xchookPath).appendingPathComponent(dir)
             fm.fileExists(atPath: urlAt.path, isDirectory: &isDirectory)
             if isDirectory.boolValue && urlAt.lastPathComponent == "run_scripts" {
                 try? fm.copyItem(at: urlAt, to: urlTo)
@@ -72,7 +70,7 @@ public final class XCHookRegister {
             let plist = try PropertyListSerialization.propertyList(from: data, format: nil)
             return plist as? [String: Any]
         } catch {
-            print(error.localizedDescription)
+            NSLog(error.localizedDescription)
             return nil
         }
     }
@@ -87,11 +85,13 @@ public final class XCHookRegister {
         guard let plist = getPlist(url: loadURL) else { return false }
         do {
             let newDict = Merge(xchookPath).overwrite(dict: plist)
-            let data = try PropertyListSerialization.data(fromPropertyList: newDict, format: .binary, options: .zero)
+            let data = try PropertyListSerialization.data(fromPropertyList: newDict,
+                                                          format: .binary,
+                                                          options: .zero)
             try data.write(to: writeURL, options: .atomic)
             return true
         } catch {
-            print(error.localizedDescription)
+            NSLog(error.localizedDescription)
             return false
         }
     }
@@ -106,18 +106,21 @@ public final class XCHookRegister {
         guard let plist = getPlist(url: loadURL) else { return false }
         do {
             let newDict = Merge(xchookPath).reset(dict: plist)
-            let data = try PropertyListSerialization.data(fromPropertyList: newDict, format: .binary, options: .zero)
+            let data = try PropertyListSerialization.data(fromPropertyList: newDict,
+                                                          format: .binary,
+                                                          options: .zero)
             try data.write(to: writeURL, options: .atomic)
             return true
         } catch {
-            print(error.localizedDescription)
+            NSLog(error.localizedDescription)
             return false
         }
     }
 
     // For Unit Test
     func modulePlist(name: String) -> URL? {
-        return Bundle.module.url(forResource: "plists/\(name)", withExtension: "plist")
+        return Bundle.module.url(forResource: "plists/\(name)",
+                                 withExtension: "plist")
     }
 
     public func install() {
