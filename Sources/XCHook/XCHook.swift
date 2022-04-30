@@ -1,5 +1,5 @@
 //
-//  XCHookRegister.swift
+//  XCHook.swift
 //
 //
 //  Created by Takuto Nakamura on 2022/04/27.
@@ -7,7 +7,7 @@
 
 import Foundation
 
-public final class XCHookRegister {
+public final class XCHook {
     enum AlertEvents: String {
         case plain   = "Xcode.AlertEvents"
         case fourOne = "Xcode.AlertEvents.4_1"

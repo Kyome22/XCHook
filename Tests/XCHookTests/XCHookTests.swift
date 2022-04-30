@@ -2,11 +2,11 @@ import XCTest
 @testable import XCHook
 
 final class XCHookTests: XCTestCase {
-    var sut: XCHookRegister!
+    var sut: XCHook!
 
     override func setUpWithError() throws {
         super.setUp()
-        sut = try XCTUnwrap(XCHookRegister())
+        sut = try XCTUnwrap(XCHook())
     }
 
     func testCreateRemoveXCHookDirectory() {
