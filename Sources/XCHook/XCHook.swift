@@ -123,6 +123,10 @@ public final class XCHook {
                                  withExtension: "plist")
     }
 
+    public func isInstalled() -> Bool {
+        return FileManager.default.fileExists(atPath: xchookPath)
+    }
+
     public func install() {
         createXCHookDirectory()
         copyFiles()
