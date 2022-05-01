@@ -21,6 +21,11 @@ public enum XCHookStatus: String {
 public struct XCHookEvent {
     public let project: String
     public let status: XCHookStatus
+
+    public init(project: String, status: XCHookStatus) {
+        self.project = project
+        self.status = status
+    }
 }
 
 public final class XCHookReceiver {
