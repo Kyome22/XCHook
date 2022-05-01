@@ -9,6 +9,7 @@ import Foundation
 import Combine
 
 public enum XCHookStatus: String {
+    case standby         = "STANDBY"
     case buildStart      = "BUILD_START"
     case buildSucceeds   = "BUILD_SUCCEEDS"
     case buildFails      = "BUILD_FAILS"
