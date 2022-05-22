@@ -20,10 +20,12 @@ public enum XCHookStatus: String {
 
 public struct XCHookEvent {
     public let project: String
+    public let path: String
     public let status: XCHookStatus
 
-    public init(project: String, status: XCHookStatus) {
+    public init(project: String, path: String, status: XCHookStatus) {
         self.project = project
+        self.path = path
         self.status = status
     }
 }
@@ -49,11 +51,12 @@ public final class XCHookReceiver {
                 else { return }
 
                 guard let project = dict["project"],
+                      let path = dict["path"],
                       let _status = dict["status"],
                       let status = XCHookStatus(rawValue: _status)
                 else { return }
 
-                let event = XCHookEvent(project: project, status: status)
+                let event = XCHookEvent(project: project, path: path, status: status)
                 self.xchookSubject.send(event)
             }
             .store(in: &cancellables)

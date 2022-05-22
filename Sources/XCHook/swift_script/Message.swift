@@ -7,13 +7,14 @@
 
 import Foundation
 
-guard CommandLine.arguments.count == 3 else {
+guard CommandLine.arguments.count == 4 else {
     NSLog("🔧 XCHook:Message.swift \(CommandLine.arguments.count)")
     exit(1)
 }
 let dict: [String: Any] = [
     "project": CommandLine.arguments[1],
-    "status": CommandLine.arguments[2]
+    "path": CommandLine.arguments[2],
+    "status": CommandLine.arguments[3]
 ]
 if let encodeData = try? JSONSerialization.data(withJSONObject: dict, options: []),
    let jsonStr = String(data: encodeData, encoding: .utf8) {

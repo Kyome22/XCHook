@@ -31,6 +31,7 @@ var cancellables = Set<AnyCancellable>()
 XCHookReceiver.shared.xchookPublisher
     .sink { event in
         Swift.print("Project: \(event.project)")
+        Swift.print("Project path: \(event.path)")
         Swift.print("Status: \(event.status.rawValue)")
     }
     .store(in: &cancellables)
