@@ -44,22 +44,25 @@ public final class XCHook {
     func copyFiles() {
         guard let resourcePath = Bundle.module.resourcePath else { return }
         let fm = FileManager.default
-        let dirs = (try? fm.contentsOfDirectory(atPath: resourcePath)) ?? []
+        let paths = (try? fm.contentsOfDirectory(atPath: resourcePath)) ?? []
         var isDirectory: ObjCBool = false
-        dirs.forEach { dir in
-            let urlAt = URL(fileURLWithPath: resourcePath).appendingPathComponent(dir)
-            var urlTo = URL(fileURLWithPath: xchookPath).appendingPathComponent(dir)
+        paths.forEach { path in
+            var urlAt = URL(fileURLWithPath: resourcePath).appendingPathComponent(path)
             fm.fileExists(atPath: urlAt.path, isDirectory: &isDirectory)
-            if isDirectory.boolValue && urlAt.lastPathComponent == "run_scripts" {
-                try? fm.copyItem(at: urlAt, to: urlTo)
-            } else if urlAt.pathExtension == "txt" {
-                urlTo.deletePathExtension()
-                urlTo.appendPathExtension("swift")
-                let data = try? Data(contentsOf: urlAt)
-                let attr: [FileAttributeKey: Any] = [
-                    .posixPermissions: NSNumber(value: 0o755)
-                ]
-                fm.createFile(atPath: urlTo.path, contents: data, attributes: attr)
+            if isDirectory.boolValue {
+                if urlAt.lastPathComponent == "run_scripts" {
+                    let urlTo = URL(fileURLWithPath: xchookPath).appendingPathComponent(path)
+                    try? fm.copyItem(at: urlAt, to: urlTo)
+                }
+                if urlAt.lastPathComponent == "swift_script" {
+                    urlAt.appendPathComponent("Message.swift")
+                    let urlTo = URL(fileURLWithPath: xchookPath).appendingPathComponent("Message.swift")
+                    let data = try? Data(contentsOf: urlAt)
+                    let attr: [FileAttributeKey: Any] = [
+                        .posixPermissions: NSNumber(value: 0o755)
+                    ]
+                    fm.createFile(atPath: urlTo.path, contents: data, attributes: attr)
+                }
             }
         }
     }

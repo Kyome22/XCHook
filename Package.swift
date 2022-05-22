@@ -21,7 +21,7 @@ let package = Package(
             resources: [
                 .copy("plists"),
                 .copy("run_scripts"),
-                .copy("Message.txt")
+                .copy("swift_script")
             ]
         ),
         .testTarget(
