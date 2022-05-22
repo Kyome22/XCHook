@@ -22,11 +22,13 @@ public struct XCHookEvent {
     public let project: String
     public let path: String
     public let status: XCHookStatus
+    public let timestamp: Double
 
-    public init(project: String, path: String, status: XCHookStatus) {
+    public init(project: String, path: String, status: XCHookStatus, timestamp: String) {
         self.project = project
         self.path = path
         self.status = status
+        self.timestamp = Double(timestamp) ?? 0.0
     }
 }
 
@@ -53,10 +55,14 @@ public final class XCHookReceiver {
                 guard let project = dict["project"],
                       let path = dict["path"],
                       let _status = dict["status"],
-                      let status = XCHookStatus(rawValue: _status)
+                      let status = XCHookStatus(rawValue: _status),
+                      let timestamp = dict["timestamp"]
                 else { return }
 
-                let event = XCHookEvent(project: project, path: path, status: status)
+                let event = XCHookEvent(project: project,
+                                        path: path,
+                                        status: status,
+                                        timestamp: timestamp)
                 self.xchookSubject.send(event)
             }
             .store(in: &cancellables)

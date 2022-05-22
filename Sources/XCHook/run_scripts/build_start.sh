@@ -1,5 +1,7 @@
 #!/bin/sh -
 
+TIMESTAMP=$(perl -MTime::HiRes=time -e 'printf "%.9f\n", time')
+
 if [ "$XcodeProject" ]; then
   # Normal Xcode Project
   PROJECT_NAME=`basename "$XcodeProject" .xcodeproj`
@@ -15,4 +17,4 @@ else
 fi
 
 logger -s "🔧 XCHook ${PROJECT_NAME} Build Start"
-swift ${HOME}/.xchook/Message.swift $PROJECT_NAME $PROJECT_PATH BUILD_START
+swift ${HOME}/.xchook/Message.swift $PROJECT_NAME $PROJECT_PATH BUILD_START $TIMESTAMP
