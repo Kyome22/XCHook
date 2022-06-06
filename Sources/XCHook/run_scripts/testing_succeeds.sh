@@ -1,6 +1,6 @@
 #!/bin/sh -
 
-TIMESTAMP=$(perl -MTime::HiRes=time -e 'printf "%.9f\n", time')
+TIMESTAMP=$(${HOME}/.xchook/ts)
 
 if [ "$XcodeProject" ]; then
   # Normal Xcode Project

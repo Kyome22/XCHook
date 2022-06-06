@@ -63,6 +63,13 @@ public final class XCHook {
                     ]
                     fm.createFile(atPath: urlTo.path, contents: data, attributes: attr)
                 }
+                if urlAt.lastPathComponent == "c_timestamp" {
+                    urlAt.appendPathComponent("timestamp.c")
+                    let urlTo = URL(fileURLWithPath: xchookPath).appendingPathComponent("timestamp.c")
+                    try? fm.copyItem(at: urlAt, to: urlTo)
+                    let generatedURL = URL(fileURLWithPath: xchookPath).appendingPathComponent("ts")
+                    Shell.run("gcc", urlTo.path, "-o", generatedURL.path)
+                }
             }
         }
     }
