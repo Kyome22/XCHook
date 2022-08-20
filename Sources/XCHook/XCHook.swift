@@ -59,7 +59,7 @@ public final class XCHook {
                     let urlTo = URL(fileURLWithPath: xchookPath).appendingPathComponent("Message.swift")
                     let data = try? Data(contentsOf: urlAt)
                     let attr: [FileAttributeKey: Any] = [
-                        .posixPermissions: NSNumber(value: 0o755)
+                        .posixPermissions: NSNumber(value: 0o744)
                     ]
                     fm.createFile(atPath: urlTo.path, contents: data, attributes: attr)
                 }
