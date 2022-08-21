@@ -30,6 +30,11 @@ public struct XCHookEvent {
         self.status = status
         self.timestamp = Double(timestamp) ?? 0.0
     }
+
+    public static let standby = XCHookEvent(project: "",
+                                            path: "",
+                                            status: .standby,
+                                            timestamp: "0.0")
 }
 
 public final class XCHookReceiver {
