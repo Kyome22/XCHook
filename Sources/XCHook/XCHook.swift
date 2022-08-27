@@ -87,6 +87,7 @@ public final class XCHook {
 
     func overwritePlist() {
         let url = URL(fileURLWithPath: xcodePath)
+        NSLog("🔧 \(url.path)")
         overwritePlist(loadURL: url, writeURL: url)
     }
 
