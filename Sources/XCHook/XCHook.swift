@@ -80,7 +80,7 @@ public final class XCHook {
             let plist = try PropertyListSerialization.propertyList(from: data, format: nil)
             return plist as? [String: Any]
         } catch {
-            NSLog(error.localizedDescription)
+            NSLog("🔧 \(error.localizedDescription)")
             return nil
         }
     }
@@ -99,9 +99,10 @@ public final class XCHook {
                                                           format: .binary,
                                                           options: .zero)
             try data.write(to: writeURL, options: .atomic)
+            NSLog("🔧 write succeeded")
             return true
         } catch {
-            NSLog(error.localizedDescription)
+            NSLog("🔧 write failed \(error.localizedDescription)")
             return false
         }
     }
@@ -120,9 +121,10 @@ public final class XCHook {
                                                           format: .binary,
                                                           options: .zero)
             try data.write(to: writeURL, options: .atomic)
+            NSLog("🔧 reset succeeded")
             return true
         } catch {
-            NSLog(error.localizedDescription)
+            NSLog("🔧 reset failed \(error.localizedDescription)")
             return false
         }
     }
