@@ -8,12 +8,6 @@
 import Foundation
 
 public struct XCHook: Sendable {
-    public enum Error: Swift.Error {
-        case runScriptsResourceNotFound
-        case copyRunScriptsFailed
-        case synchronizePreferencesFailed
-    }
-
     let directory: XCHookDirectory
 
     private var behaviors: RunScriptBehaviors {
@@ -23,7 +17,9 @@ public struct XCHook: Sendable {
     public init?() {
         let xcodePreferencesURL = FileManager.homeDirectoryURL
             .appending(path: "Library/Preferences/\(XcodeApplication.bundleIdentifier).plist")
-        guard FileManager.default.fileExists(atPath: xcodePreferencesURL.path) else { return nil }
+        guard FileManager.default.fileExists(atPath: xcodePreferencesURL.path) else {
+            return nil
+        }
         directory = .default
     }
 
@@ -65,7 +61,7 @@ public struct XCHook: Sendable {
 
     func copyRunScripts() throws {
         guard let bundledRunScriptsURL = Bundle.module.url(forResource: "run_scripts", withExtension: nil) else {
-            throw Error.runScriptsResourceNotFound
+            throw XCHError.runScriptsResourceNotFound
         }
         let fileManager = FileManager.default
         let scriptNames = try fileManager.contentsOfDirectory(atPath: bundledRunScriptsURL.path)
@@ -75,7 +71,7 @@ public struct XCHook: Sendable {
             let attributes: [FileAttributeKey: Any] = [.posixPermissions: NSNumber(value: 0o755)]
             guard let scriptData = fileManager.contents(atPath: sourceURL.path),
                   fileManager.createFile(atPath: destinationURL.path, contents: scriptData, attributes: attributes) else {
-                throw Error.copyRunScriptsFailed
+                throw XCHError.copyRunScriptsFailed
             }
         }
     }
@@ -123,7 +119,7 @@ public struct XCHook: Sendable {
             kCFPreferencesAnyHost
         )
         guard succeeded else {
-            throw Error.synchronizePreferencesFailed
+            throw XCHError.synchronizePreferencesFailed
         }
     }
 }
