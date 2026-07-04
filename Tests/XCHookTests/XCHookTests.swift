@@ -1,61 +1,216 @@
-import XCTest
+import Foundation
+import Testing
 @testable import XCHook
 
-final class XCHookTests: XCTestCase {
-    var sut: XCHook!
+private func makeTemporaryDirectory() throws -> URL {
+    let directoryURL = FileManager.default.temporaryDirectory
+        .appending(path: "XCHookTests-\(UUID().uuidString)")
+    try FileManager.default.createDirectory(at: directoryURL, withIntermediateDirectories: true)
+    return directoryURL
+}
 
-    override func setUpWithError() throws {
-        super.setUp()
-        sut = try XCTUnwrap(XCHook())
+struct MergeTests {
+    @Test
+    func overwriteRegistersRunScriptsForAllEvents() {
+        let merge = Merge("/Users/foo/.xchook")
+        let merged = merge.overwrite(dict: [:])
+        #expect(merge.isRegistered(in: merged))
     }
 
-    func testCreateRemoveXCHookDirectory() {
-        sut.createXCHookDirectory()
-        let createActual = Shell.run("test", "-e", sut.xchookPath).succeeded
-        XCTAssertTrue(createActual)
-
-        sut.removeXCHookDirectory()
-        let removeActual = Shell.run("test", "-e", sut.xchookPath).succeeded
-        XCTAssertFalse(removeActual)
+    @Test
+    func overwritePreservesUnrelatedAlertSettings() throws {
+        let merge = Merge("/Users/foo/.xchook")
+        let original: [String: Any] = [
+            "Xcode.AlertEvent.BuildStart": [
+                "Xcode.Alert.Sound": ["enabled": 1, "name": "Submarine"],
+                "Xcode.Alert.RunScript": ["enabled": 0, "path": ""]
+            ]
+        ]
+        let merged = merge.overwrite(dict: original)
+        let buildStart = try #require(merged["Xcode.AlertEvent.BuildStart"] as? [String: Any])
+        let sound = try #require(buildStart["Xcode.Alert.Sound"] as? [String: Any])
+        #expect(sound["name"] as? String == "Submarine")
+        let runScript = try #require(buildStart["Xcode.Alert.RunScript"] as? [String: Any])
+        #expect(runScript["path"] as? String == "/Users/foo/.xchook/run_scripts/build_start.sh")
     }
 
-    func testCopyFiles() {
-        sut.createXCHookDirectory()
-        sut.copyFiles()
-        let xchookActual = Shell.run("ls", "-1", sut.xchookPath).outputs
-        XCTAssertTrue(xchookActual[0] == "Message.swift")
-        XCTAssertTrue(xchookActual[1] == "run_scripts")
-        let runScriptsActual = Shell.run("ls", "-1", "\(sut.xchookPath)/run_scripts").outputs
-        XCTAssertTrue(runScriptsActual[0] == "build_fails.sh")
-        XCTAssertTrue(runScriptsActual[1] == "build_start.sh")
-        XCTAssertTrue(runScriptsActual[2] == "build_succeeds.sh")
-        XCTAssertTrue(runScriptsActual[3] == "testing_fails.sh")
-        XCTAssertTrue(runScriptsActual[4] == "testing_start.sh")
-        XCTAssertTrue(runScriptsActual[5] == "testing_succeeds.sh")
-        sut.removeXCHookDirectory()
+    @Test
+    func resetDisablesRunScriptsForAllEvents() throws {
+        let merge = Merge("/Users/foo/.xchook")
+        let reset = merge.reset(dict: merge.overwrite(dict: [:]))
+        #expect(!merge.isRegistered(in: reset))
+        let buildStart = try #require(reset["Xcode.AlertEvent.BuildStart"] as? [String: Any])
+        let runScript = try #require(buildStart["Xcode.Alert.RunScript"] as? [String: Any])
+        #expect(runScript["enabled"] as? Int == 0)
+        #expect(runScript["path"] as? String == "")
     }
 
-    func testOverwritePlists() throws {
-        let loadURL = try XCTUnwrap(sut.modulePlist(name: "xcode_before_overwrite"))
-        let writeURL = loadURL.deletingLastPathComponent()
-            .appendingPathComponent("xcode_after_overwrite.plist")
-        let actual = sut.overwritePlist(loadURL: loadURL, writeURL: writeURL)
-        XCTAssertTrue(actual)
+    @Test
+    func isRegisteredDetectsPathMismatch() {
+        let merged = Merge("/Users/foo/.xchook").overwrite(dict: [:])
+        #expect(!Merge("/Users/bar/.xchook").isRegistered(in: merged))
+    }
+}
+
+struct XCHookFileTests {
+    @Test
+    func copyRunScriptsInstallsAllExecutableScripts() throws {
+        let temporaryDirectoryURL = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: temporaryDirectoryURL) }
+        let xchook = XCHook(xchookDirectoryURL: temporaryDirectoryURL.appending(path: ".xchook"))
+
+        try xchook.createXCHookDirectories()
+        try xchook.copyRunScripts()
+
+        let scriptNames = try FileManager.default
+            .contentsOfDirectory(atPath: xchook.runScriptsDirectoryURL.path)
+            .sorted()
+        #expect(scriptNames == [
+            "build_fails.sh",
+            "build_start.sh",
+            "build_succeeds.sh",
+            "post_event.sh",
+            "testing_fails.sh",
+            "testing_start.sh",
+            "testing_succeeds.sh"
+        ])
+        for scriptName in scriptNames {
+            let scriptPath = xchook.runScriptsDirectoryURL.appending(path: scriptName).path
+            #expect(FileManager.default.isExecutableFile(atPath: scriptPath))
+        }
+
+        try xchook.removeXCHookDirectory()
+        #expect(!FileManager.default.fileExists(atPath: xchook.xchookDirectoryURL.path))
+    }
+}
+
+struct RunScriptTests {
+    private func runScript(
+        named scriptName: String,
+        homeDirectoryURL: URL,
+        environment: [String: String]
+    ) throws {
+        let xchook = XCHook(xchookDirectoryURL: homeDirectoryURL.appending(path: ".xchook"))
+        try xchook.createXCHookDirectories()
+        try xchook.copyRunScripts()
+
+        let process = Process()
+        process.executableURL = xchook.runScriptsDirectoryURL.appending(path: scriptName)
+        process.environment = environment.merging(["HOME": homeDirectoryURL.path]) { _, new in new }
+        try process.run()
+        process.waitUntilExit()
+        #expect(process.terminationStatus == 0)
     }
 
-    func testResetPlists() throws {
-        let loadURL = try XCTUnwrap(sut.modulePlist(name: "xcode_before_reset"))
-        let writeURL = loadURL.deletingLastPathComponent()
-            .appendingPathComponent("xcode_after_reset.plist")
-        let actual = sut.resetPlist(loadURL: loadURL, writeURL: writeURL)
-        XCTAssertTrue(actual)
+    private func writtenEvents(homeDirectoryURL: URL) throws -> [XCHookEvent] {
+        let eventsDirectoryURL = homeDirectoryURL.appending(path: ".xchook/events")
+        var events = [XCHookEvent]()
+        for fileName in try FileManager.default.contentsOfDirectory(atPath: eventsDirectoryURL.path).sorted()
+        where fileName.hasSuffix(".json") {
+            let data = try Data(contentsOf: eventsDirectoryURL.appending(path: fileName))
+            let json = try #require(try JSONSerialization.jsonObject(with: data) as? [String: String])
+            let rawStatus = try #require(json["status"])
+            events.append(
+                XCHookEvent(
+                    project: try #require(json["project"]),
+                    path: try #require(json["path"]),
+                    status: try #require(XCHookStatus(rawValue: rawStatus)),
+                    timestamp: try #require(json["timestamp"])
+                )
+            )
+        }
+        return events
     }
 
-    func xtestInstall() {
-        sut.install()
+    @Test
+    func buildStartScriptWritesEventForXcodeProject() throws {
+        let homeDirectoryURL = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: homeDirectoryURL) }
+
+        try runScript(
+            named: "build_start.sh",
+            homeDirectoryURL: homeDirectoryURL,
+            environment: [
+                "XcodeProject": "My \"Weird\" App.xcodeproj",
+                "XcodeProjectPath": "/tmp/My \"Weird\" App.xcodeproj"
+            ]
+        )
+
+        let events = try writtenEvents(homeDirectoryURL: homeDirectoryURL)
+        #expect(events.count == 1)
+        #expect(events.first?.project == "My \"Weird\" App")
+        #expect(events.first?.path == "/tmp/My \"Weird\" App.xcodeproj")
+        #expect(events.first?.status == .buildStart)
+        #expect(events.first?.timestamp ?? 0 > 0)
     }
 
-    func xtestUninstall() {
-        sut.uninstall()
+    @Test
+    func testingSucceedsScriptWritesEventForSwiftPackage() throws {
+        let homeDirectoryURL = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: homeDirectoryURL) }
+
+        try runScript(
+            named: "testing_succeeds.sh",
+            homeDirectoryURL: homeDirectoryURL,
+            environment: [
+                "XcodeWorkspace": "package.xcworkspace",
+                "XcodeWorkspacePath": "/Users/foo/Dev/XCHook/.swiftpm/xcode/package.xcworkspace"
+            ]
+        )
+
+        let events = try writtenEvents(homeDirectoryURL: homeDirectoryURL)
+        #expect(events.first?.project == "XCHook")
+        #expect(events.first?.status == .testingSucceeds)
+    }
+}
+
+struct EventStreamTests {
+    private func writeEventFile(
+        to eventsDirectoryURL: URL,
+        project: String,
+        status: XCHookStatus,
+        timestamp: String
+    ) throws {
+        let json = """
+        {"project":"\(project)","path":"/tmp/\(project)","status":"\(status.rawValue)","timestamp":"\(timestamp)"}
+        """
+        try FileManager.default.createDirectory(at: eventsDirectoryURL, withIntermediateDirectories: true)
+        try json.data(using: .utf8)?.write(to: eventsDirectoryURL.appending(path: "\(timestamp)-test.json"))
+    }
+
+    @Test(.timeLimit(.minutes(1)))
+    func eventStreamEmitsFreshEventsAndDiscardsStaleOnes() async throws {
+        let temporaryDirectoryURL = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: temporaryDirectoryURL) }
+        let eventsDirectoryURL = temporaryDirectoryURL.appending(path: "events")
+
+        try writeEventFile(
+            to: eventsDirectoryURL,
+            project: "Stale",
+            status: .buildFails,
+            timestamp: "1.0"
+        )
+
+        let stream = XCHookReceiver.eventStream(directoryURL: eventsDirectoryURL)
+
+        try await Task.sleep(for: .milliseconds(500))
+        try writeEventFile(
+            to: eventsDirectoryURL,
+            project: "Fresh",
+            status: .buildSucceeds,
+            timestamp: "2.0"
+        )
+
+        for await event in stream {
+            #expect(event.project == "Fresh")
+            #expect(event.status == .buildSucceeds)
+            #expect(event.timestamp == 2.0)
+            break
+        }
+
+        let remainingFileNames = try FileManager.default
+            .contentsOfDirectory(atPath: eventsDirectoryURL.path)
+            .filter { $0.hasSuffix(".json") }
+        #expect(remainingFileNames.isEmpty)
     }
 }

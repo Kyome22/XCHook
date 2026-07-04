@@ -1,12 +1,15 @@
-// swift-tools-version: 5.6
-// The swift-tools-version declares the minimum version of Swift required to build this package.
+// swift-tools-version: 6.2
 
 import PackageDescription
+
+let swiftSettings: [SwiftSetting] = [
+    .enableUpcomingFeature("ExistentialAny"),
+]
 
 let package = Package(
     name: "XCHook",
     platforms: [
-        .macOS(.v11)
+        .macOS(.v15)
     ],
     products: [
         .library(
@@ -14,20 +17,24 @@ let package = Package(
             targets: ["XCHook"]
         )
     ],
+    dependencies: [
+        .package(url: "https://github.com/apple/swift-async-algorithms.git", from: "1.1.0")
+    ],
     targets: [
         .target(
             name: "XCHook",
-            dependencies: [],
+            dependencies: [
+                .product(name: "AsyncAlgorithms", package: "swift-async-algorithms")
+            ],
             resources: [
-                .copy("plists"),
-                .copy("run_scripts"),
-                .copy("swift_script"),
-                .copy("c_timestamp")
-            ]
+                .copy("run_scripts")
+            ],
+            swiftSettings: swiftSettings
         ),
         .testTarget(
             name: "XCHookTests",
-            dependencies: ["XCHook"]
+            dependencies: ["XCHook"],
+            swiftSettings: swiftSettings
         )
     ]
 )

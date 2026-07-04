@@ -2,6 +2,14 @@
 
 Hooking the events (building and testing) of Xcode.app.
 
+XCHook registers run scripts to Xcode's Behaviors preferences.
+When Xcode builds or tests a project, the scripts drop event files into `~/.xchook/events/`, and `XCHookReceiver` delivers them to your app as an `AsyncSequence`.
+
+## Requirements
+
+- macOS 15+
+- No sandbox (XCHook writes to Xcode's preferences)
+
 ## Usage
 
 **Install XCHook to your project via Swift Package Manager**
@@ -14,28 +22,36 @@ Add Swift Package: `https://github.com/Kyome22/XCHook.git`
 import XCHook
 
 if let xchook = XCHook() {
-    xchook.install()
+    try xchook.install()
 } else {
     print("Failed to initialize XCHook; Xcode.plist does not found.")
+}
+```
+
+Xcode loads the Behaviors preferences at launch, so Xcode must be relaunched after the installation.
+You can offer a one-click relaunch:
+
+```swift
+import XCHook
+
+if XcodeApplication.isRunning {
+    await XcodeApplication.restart()
 }
 ```
 
 **Receive XCHookEvent**
 
 ```swift
-import Combine
 import XCHook
 
-var cancellables = Set<AnyCancellable>()
-
-XCHookReceiver.shared.xchookPublisher
-    .sink { event in
-        Swift.print("Project: \(event.project)")
-        Swift.print("Project path: \(event.path)")
-        Swift.print("Status: \(event.status.rawValue)")
-    }
-    .store(in: &cancellables)
+for await event in XCHookReceiver.shared.events {
+    print("Project: \(event.project)")
+    print("Project path: \(event.path)")
+    print("Status: \(event.status.rawValue)")
+}
 ```
+
+`XCHookReceiver.shared.events` is a shared `AsyncSequence`, so multiple tasks can iterate it concurrently.
 
 **Uninstall scripts of XCHook from Xcode.app**
 
@@ -43,7 +59,7 @@ XCHookReceiver.shared.xchookPublisher
 import XCHook
 
 if let xchook = XCHook() {
-    xchook.uninstall()
+    try xchook.uninstall()
 } else {
     print("Failed to initialize XCHook; Xcode.plist does not found.")
 }

@@ -1,19 +1,14 @@
-//
-//  Merge.swift
-//  
-//
-//  Created by Takuto Nakamura on 2022/04/11.
-//
+/*
+ Merge.swift
+ XCHook
+
+ Created by Takuto Nakamura on 2022/04/11.
+ */
 
 import Foundation
 
-final class Merge {
-    private enum AlertEvents: String {
-        case plain   = "Xcode.AlertEvents"
-        case fourOne = "Xcode.AlertEvents.4_1"
-    }
-
-    private enum AlertEvent: String {
+struct Merge {
+    private enum AlertEvent: String, CaseIterable {
         case buildStart      = "Xcode.AlertEvent.BuildStart"
         case buildSucceeds   = "Xcode.AlertEvent.BuildSucceeds"
         case buildFails      = "Xcode.AlertEvent.BuildFails"
@@ -21,109 +16,75 @@ final class Merge {
         case testingSucceeds = "Xcode.AlertEvent.TestingSucceeds"
         case testingFails    = "Xcode.AlertEvent.TestingFails"
 
-        var shell: String {
+        var scriptName: String {
             switch self {
-            case .buildStart:      return "build_start.sh"
-            case .buildSucceeds:   return "build_succeeds.sh"
-            case .buildFails:      return "build_fails.sh"
-            case .testingStart:    return "testing_start.sh"
-            case .testingSucceeds: return "testing_succeeds.sh"
-            case .testingFails:    return "testing_fails.sh"
+            case .buildStart:      "build_start.sh"
+            case .buildSucceeds:   "build_succeeds.sh"
+            case .buildFails:      "build_fails.sh"
+            case .testingStart:    "testing_start.sh"
+            case .testingSucceeds: "testing_succeeds.sh"
+            case .testingFails:    "testing_fails.sh"
             }
         }
     }
 
+    static let legacyAlertEventsKey = "Xcode.AlertEvents"
+    static let modernAlertEventsKey = "Xcode.AlertEvents.4_1"
+    static let alertEventsKeys = [legacyAlertEventsKey, modernAlertEventsKey]
+    static let recentScriptsKey = "Xcode.Alert.Script.Recent"
+
+    private static let runScriptKey = "Xcode.Alert.RunScript"
+
     private let xchookPath: String
-    private let setupDict: [String: Any]
-    private let resetDict: [String: Any]
-    private let alertEventList: [AlertEvent] = [
-        .buildStart,
-        .buildSucceeds,
-        .buildFails,
-        .testingStart,
-        .testingSucceeds,
-        .testingFails
-    ]
 
     init(_ xchookPath: String) {
         self.xchookPath = xchookPath
+    }
 
-        let fullDict = alertEventList
-            .reduce(into: [String: Any](), { partialResult, event in
-                partialResult[event.rawValue] = [
-                    "Xcode.Alert.RunScript": [
-                        "enabled": 1,
-                        "path": "\(xchookPath)/run_scripts/\(event.shell)"
-                    ]
-                ]
-            })
-        self.setupDict = [
-            AlertEvents.plain.rawValue: fullDict,
-            AlertEvents.fourOne.rawValue: fullDict
-        ]
+    var expectedScriptPaths: [String] {
+        AlertEvent.allCases.map { scriptPath(for: $0) }
+    }
 
-        let emptyDict = alertEventList
-            .reduce(into: [String: Any](), { partialResult, event in
-                partialResult[event.rawValue] = [
-                    "Xcode.Alert.RunScript": [
-                        "enabled": 0,
-                        "path": ""
-                    ]
-                ]
-            })
-        self.resetDict = [
-            AlertEvents.plain.rawValue: emptyDict,
-            AlertEvents.fourOne.rawValue: emptyDict
-        ]
+    private func scriptPath(for alertEvent: AlertEvent) -> String {
+        "\(xchookPath)/run_scripts/\(alertEvent.scriptName)"
     }
 
     func overwrite(dict: [String: Any]) -> [String: Any] {
-        return merge(old: dict, new: setupDict)
+        merge(into: dict) { alertEvent in
+            ["enabled": 1, "path": scriptPath(for: alertEvent)]
+        }
     }
 
     func reset(dict: [String: Any]) -> [String: Any] {
-        var d = merge(old: dict, new: resetDict)
-        d["Xcode.Alert.Script.Recent"] = []
-        return d
+        merge(into: dict) { _ in
+            ["enabled": 0, "path": ""]
+        }
+    }
+
+    func isRegistered(in dict: [String: Any]) -> Bool {
+        AlertEvent.allCases.allSatisfy { alertEvent in
+            guard let event = dict[alertEvent.rawValue] as? [String: Any],
+                  let runScript = event[Self.runScriptKey] as? [String: Any],
+                  let enabled = runScript["enabled"] as? NSNumber,
+                  let path = runScript["path"] as? String else {
+                return false
+            }
+            return enabled.boolValue && path == scriptPath(for: alertEvent)
+        }
     }
 
     private func merge(
-        old: [String: Any],
-        new: [String: Any]
+        into dict: [String: Any],
+        runScript: (AlertEvent) -> [String: Any]
     ) -> [String: Any] {
-        var d = old
-        let list: [AlertEvents] = [.plain, .fourOne]
-        for events in list {
-            d[events.rawValue] = mergeEvents(alertEvents: events, old: old, new: new)
+        var merged = dict
+        for alertEvent in AlertEvent.allCases {
+            var event = merged[alertEvent.rawValue] as? [String: Any] ?? [:]
+            var existingRunScript = event[Self.runScriptKey] as? [String: Any] ?? [:]
+            existingRunScript.merge(runScript(alertEvent)) { _, new in new }
+            event[Self.runScriptKey] = existingRunScript
+            merged[alertEvent.rawValue] = event
         }
-        return d
-    }
-
-    private func mergeEvents(
-        alertEvents: AlertEvents,
-        old: [String: Any],
-        new: [String: Any]
-    ) -> [String: Any] {
-        let s = new[alertEvents.rawValue] as! [String: Any]
-        if let t = old[alertEvents.rawValue] as? [String: Any] {
-            var d = t
-            for event in alertEventList {
-                d[event.rawValue] = mergeEvent(alertEvent: event, old: t, new: s)
-            }
-            return d
-        }
-        return s
-    }
-
-    private func mergeEvent(
-        alertEvent: AlertEvent,
-        old: [String: Any],
-        new: [String: Any]
-    ) -> [String: Any] {
-        let s = new[alertEvent.rawValue] as! [String: Any]
-        if let t = old[alertEvent.rawValue] as? [String: Any] {
-            return t.merging(s) { _, n in n }
-        }
-        return s
+        return merged
     }
 }
