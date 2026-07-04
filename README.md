@@ -44,14 +44,14 @@ if XcodeApplication.isRunning {
 ```swift
 import XCHook
 
-for await event in XCHookReceiver.shared.events {
+for await event in XCHookReceiver.events {
     print("Project: \(event.project)")
     print("Project path: \(event.path)")
     print("Status: \(event.status.rawValue)")
 }
 ```
 
-`XCHookReceiver.shared.events` is a shared `AsyncSequence`, so multiple tasks can iterate it concurrently.
+`XCHookReceiver.events` is a shared `AsyncSequence`, so multiple tasks can iterate it concurrently.
 
 **Uninstall scripts of XCHook from Xcode.app**
 

@@ -1,5 +1,5 @@
 /*
- Merge.swift
+ RunScriptBehaviors.swift
  XCHook
 
  Created by Takuto Nakamura on 2022/04/11.
@@ -7,7 +7,7 @@
 
 import Foundation
 
-struct Merge {
+struct RunScriptBehaviors {
     private enum AlertEvent: String, CaseIterable {
         case buildStart      = "Xcode.AlertEvent.BuildStart"
         case buildSucceeds   = "Xcode.AlertEvent.BuildSucceeds"
@@ -35,10 +35,10 @@ struct Merge {
 
     private static let runScriptKey = "Xcode.Alert.RunScript"
 
-    private let xchookPath: String
+    private let runScriptsDirectoryURL: URL
 
-    init(_ xchookPath: String) {
-        self.xchookPath = xchookPath
+    init(runScriptsDirectoryURL: URL) {
+        self.runScriptsDirectoryURL = runScriptsDirectoryURL
     }
 
     var expectedScriptPaths: [String] {
@@ -46,16 +46,16 @@ struct Merge {
     }
 
     private func scriptPath(for alertEvent: AlertEvent) -> String {
-        "\(xchookPath)/run_scripts/\(alertEvent.scriptName)"
+        runScriptsDirectoryURL.appending(path: alertEvent.scriptName).path
     }
 
-    func overwrite(dict: [String: Any]) -> [String: Any] {
+    func register(into dict: [String: Any]) -> [String: Any] {
         merge(into: dict) { alertEvent in
             ["enabled": 1, "path": scriptPath(for: alertEvent)]
         }
     }
 
-    func reset(dict: [String: Any]) -> [String: Any] {
+    func unregister(from dict: [String: Any]) -> [String: Any] {
         merge(into: dict) { _ in
             ["enabled": 0, "path": ""]
         }

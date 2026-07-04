@@ -12,7 +12,7 @@ final class EventsDirectoryWatcher: @unchecked Sendable {
         let project: String
         let path: String
         let status: String
-        let timestamp: String
+        let timestamp: Double
     }
 
     private let directoryURL: URL
@@ -56,7 +56,7 @@ final class EventsDirectoryWatcher: @unchecked Sendable {
             queue: queue
         )
         source.setEventHandler { [weak self] in
-            guard let self else { return }
+            guard let self, let source = self.source else { return }
             if source.data.isDisjoint(with: [.delete, .rename]) {
                 self.drainEventFiles()
             } else {

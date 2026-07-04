@@ -25,7 +25,7 @@ escape_json() {
 EVENTS_DIRECTORY="$HOME/.xchook/events"
 mkdir -p "$EVENTS_DIRECTORY"
 
-EVENT_JSON="{\"project\":\"$(escape_json "$PROJECT_NAME")\",\"path\":\"$(escape_json "$PROJECT_PATH")\",\"status\":\"$STATUS\",\"timestamp\":\"$TIMESTAMP\"}"
+EVENT_JSON="{\"project\":\"$(escape_json "$PROJECT_NAME")\",\"path\":\"$(escape_json "$PROJECT_PATH")\",\"status\":\"$STATUS\",\"timestamp\":$TIMESTAMP}"
 
 TEMPORARY_FILE=$(mktemp "$EVENTS_DIRECTORY/.event.XXXXXX")
 print -r -- "$EVENT_JSON" > "$TEMPORARY_FILE"

@@ -14,59 +14,52 @@ public struct XCHook: Sendable {
         case synchronizePreferencesFailed
     }
 
-    static let preferencesDomain = "com.apple.dt.Xcode"
+    let directory: XCHookDirectory
 
-    let xchookDirectoryURL: URL
-
-    var runScriptsDirectoryURL: URL {
-        xchookDirectoryURL.appending(path: "run_scripts")
-    }
-
-    var eventsDirectoryURL: URL {
-        xchookDirectoryURL.appending(path: "events")
+    private var behaviors: RunScriptBehaviors {
+        RunScriptBehaviors(runScriptsDirectoryURL: directory.runScriptsDirectoryURL)
     }
 
     public init?() {
-        guard let homeDirectory = FileManager.homeDirectory else { return nil }
-        let xcodePreferencesPath = homeDirectory + "/Library/Preferences/\(Self.preferencesDomain).plist"
-        guard FileManager.default.fileExists(atPath: xcodePreferencesPath) else { return nil }
-        xchookDirectoryURL = URL(filePath: homeDirectory).appending(path: ".xchook")
+        let xcodePreferencesURL = FileManager.homeDirectoryURL
+            .appending(path: "Library/Preferences/\(XcodeApplication.bundleIdentifier).plist")
+        guard FileManager.default.fileExists(atPath: xcodePreferencesURL.path) else { return nil }
+        directory = .default
     }
 
-    init(xchookDirectoryURL: URL) {
-        self.xchookDirectoryURL = xchookDirectoryURL
+    init(directory: XCHookDirectory) {
+        self.directory = directory
     }
 
     public func isInstalled() -> Bool {
-        let merge = Merge(xchookDirectoryURL.path)
-        guard merge.expectedScriptPaths.allSatisfy(FileManager.default.fileExists(atPath:)),
-              let alertEvents = copyPreferenceValue(forKey: Merge.modernAlertEventsKey) else {
+        guard behaviors.expectedScriptPaths.allSatisfy(FileManager.default.fileExists(atPath:)),
+              let alertEvents = copyPreferenceValue(forKey: RunScriptBehaviors.modernAlertEventsKey) else {
             return false
         }
-        return merge.isRegistered(in: alertEvents)
+        return behaviors.isRegistered(in: alertEvents)
     }
 
     public func install() throws {
         try createXCHookDirectories()
         try copyRunScripts()
-        try applyBehaviors()
+        try registerBehaviors()
     }
 
     public func uninstall() throws {
-        try resetBehaviors()
+        try unregisterBehaviors()
         try removeXCHookDirectory()
     }
 
     func createXCHookDirectories() throws {
         let fileManager = FileManager.default
-        try fileManager.createDirectory(at: runScriptsDirectoryURL, withIntermediateDirectories: true)
-        try fileManager.createDirectory(at: eventsDirectoryURL, withIntermediateDirectories: true)
+        try fileManager.createDirectory(at: directory.runScriptsDirectoryURL, withIntermediateDirectories: true)
+        try fileManager.createDirectory(at: directory.eventsDirectoryURL, withIntermediateDirectories: true)
     }
 
     func removeXCHookDirectory() throws {
         let fileManager = FileManager.default
-        if fileManager.fileExists(atPath: xchookDirectoryURL.path) {
-            try fileManager.removeItem(at: xchookDirectoryURL)
+        if fileManager.fileExists(atPath: directory.baseURL.path) {
+            try fileManager.removeItem(at: directory.baseURL)
         }
     }
 
@@ -78,7 +71,7 @@ public struct XCHook: Sendable {
         let scriptNames = try fileManager.contentsOfDirectory(atPath: bundledRunScriptsURL.path)
         for scriptName in scriptNames where scriptName.hasSuffix(".sh") {
             let sourceURL = bundledRunScriptsURL.appending(path: scriptName)
-            let destinationURL = runScriptsDirectoryURL.appending(path: scriptName)
+            let destinationURL = directory.runScriptsDirectoryURL.appending(path: scriptName)
             let attributes: [FileAttributeKey: Any] = [.posixPermissions: NSNumber(value: 0o755)]
             guard let scriptData = fileManager.contents(atPath: sourceURL.path),
                   fileManager.createFile(atPath: destinationURL.path, contents: scriptData, attributes: attributes) else {
@@ -87,29 +80,27 @@ public struct XCHook: Sendable {
         }
     }
 
-    func applyBehaviors() throws {
-        let merge = Merge(xchookDirectoryURL.path)
-        for key in Merge.alertEventsKeys {
+    func registerBehaviors() throws {
+        for key in RunScriptBehaviors.alertEventsKeys {
             let currentValue = copyPreferenceValue(forKey: key) ?? [:]
-            setPreferenceValue(merge.overwrite(dict: currentValue), forKey: key)
+            setPreferenceValue(behaviors.register(into: currentValue), forKey: key)
         }
         try synchronizePreferences()
     }
 
-    func resetBehaviors() throws {
-        let merge = Merge(xchookDirectoryURL.path)
-        for key in Merge.alertEventsKeys {
+    func unregisterBehaviors() throws {
+        for key in RunScriptBehaviors.alertEventsKeys {
             let currentValue = copyPreferenceValue(forKey: key) ?? [:]
-            setPreferenceValue(merge.reset(dict: currentValue), forKey: key)
+            setPreferenceValue(behaviors.unregister(from: currentValue), forKey: key)
         }
-        setPreferenceValue([String](), forKey: Merge.recentScriptsKey)
+        setPreferenceValue([String](), forKey: RunScriptBehaviors.recentScriptsKey)
         try synchronizePreferences()
     }
 
     private func copyPreferenceValue(forKey key: String) -> [String: Any]? {
         CFPreferencesCopyValue(
             key as CFString,
-            Self.preferencesDomain as CFString,
+            XcodeApplication.bundleIdentifier as CFString,
             kCFPreferencesCurrentUser,
             kCFPreferencesAnyHost
         ) as? [String: Any]
@@ -119,7 +110,7 @@ public struct XCHook: Sendable {
         CFPreferencesSetValue(
             key as CFString,
             value as CFPropertyList,
-            Self.preferencesDomain as CFString,
+            XcodeApplication.bundleIdentifier as CFString,
             kCFPreferencesCurrentUser,
             kCFPreferencesAnyHost
         )
@@ -127,7 +118,7 @@ public struct XCHook: Sendable {
 
     private func synchronizePreferences() throws {
         let succeeded = CFPreferencesSynchronize(
-            Self.preferencesDomain as CFString,
+            XcodeApplication.bundleIdentifier as CFString,
             kCFPreferencesCurrentUser,
             kCFPreferencesAnyHost
         )

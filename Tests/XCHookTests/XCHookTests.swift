@@ -9,25 +9,31 @@ private func makeTemporaryDirectory() throws -> URL {
     return directoryURL
 }
 
-struct MergeTests {
+private func makeBehaviors(xchookPath: String) -> RunScriptBehaviors {
+    RunScriptBehaviors(
+        runScriptsDirectoryURL: XCHookDirectory(baseURL: URL(filePath: xchookPath)).runScriptsDirectoryURL
+    )
+}
+
+struct RunScriptBehaviorsTests {
     @Test
-    func overwriteRegistersRunScriptsForAllEvents() {
-        let merge = Merge("/Users/foo/.xchook")
-        let merged = merge.overwrite(dict: [:])
-        #expect(merge.isRegistered(in: merged))
+    func registerAddsRunScriptsForAllEvents() {
+        let behaviors = makeBehaviors(xchookPath: "/Users/foo/.xchook")
+        let registered = behaviors.register(into: [:])
+        #expect(behaviors.isRegistered(in: registered))
     }
 
     @Test
-    func overwritePreservesUnrelatedAlertSettings() throws {
-        let merge = Merge("/Users/foo/.xchook")
+    func registerPreservesUnrelatedAlertSettings() throws {
+        let behaviors = makeBehaviors(xchookPath: "/Users/foo/.xchook")
         let original: [String: Any] = [
             "Xcode.AlertEvent.BuildStart": [
                 "Xcode.Alert.Sound": ["enabled": 1, "name": "Submarine"],
                 "Xcode.Alert.RunScript": ["enabled": 0, "path": ""]
             ]
         ]
-        let merged = merge.overwrite(dict: original)
-        let buildStart = try #require(merged["Xcode.AlertEvent.BuildStart"] as? [String: Any])
+        let registered = behaviors.register(into: original)
+        let buildStart = try #require(registered["Xcode.AlertEvent.BuildStart"] as? [String: Any])
         let sound = try #require(buildStart["Xcode.Alert.Sound"] as? [String: Any])
         #expect(sound["name"] as? String == "Submarine")
         let runScript = try #require(buildStart["Xcode.Alert.RunScript"] as? [String: Any])
@@ -35,11 +41,11 @@ struct MergeTests {
     }
 
     @Test
-    func resetDisablesRunScriptsForAllEvents() throws {
-        let merge = Merge("/Users/foo/.xchook")
-        let reset = merge.reset(dict: merge.overwrite(dict: [:]))
-        #expect(!merge.isRegistered(in: reset))
-        let buildStart = try #require(reset["Xcode.AlertEvent.BuildStart"] as? [String: Any])
+    func unregisterDisablesRunScriptsForAllEvents() throws {
+        let behaviors = makeBehaviors(xchookPath: "/Users/foo/.xchook")
+        let unregistered = behaviors.unregister(from: behaviors.register(into: [:]))
+        #expect(!behaviors.isRegistered(in: unregistered))
+        let buildStart = try #require(unregistered["Xcode.AlertEvent.BuildStart"] as? [String: Any])
         let runScript = try #require(buildStart["Xcode.Alert.RunScript"] as? [String: Any])
         #expect(runScript["enabled"] as? Int == 0)
         #expect(runScript["path"] as? String == "")
@@ -47,8 +53,8 @@ struct MergeTests {
 
     @Test
     func isRegisteredDetectsPathMismatch() {
-        let merged = Merge("/Users/foo/.xchook").overwrite(dict: [:])
-        #expect(!Merge("/Users/bar/.xchook").isRegistered(in: merged))
+        let registered = makeBehaviors(xchookPath: "/Users/foo/.xchook").register(into: [:])
+        #expect(!makeBehaviors(xchookPath: "/Users/bar/.xchook").isRegistered(in: registered))
     }
 }
 
@@ -57,13 +63,13 @@ struct XCHookFileTests {
     func copyRunScriptsInstallsAllExecutableScripts() throws {
         let temporaryDirectoryURL = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: temporaryDirectoryURL) }
-        let xchook = XCHook(xchookDirectoryURL: temporaryDirectoryURL.appending(path: ".xchook"))
+        let xchook = XCHook(directory: XCHookDirectory(baseURL: temporaryDirectoryURL.appending(path: ".xchook")))
 
         try xchook.createXCHookDirectories()
         try xchook.copyRunScripts()
 
         let scriptNames = try FileManager.default
-            .contentsOfDirectory(atPath: xchook.runScriptsDirectoryURL.path)
+            .contentsOfDirectory(atPath: xchook.directory.runScriptsDirectoryURL.path)
             .sorted()
         #expect(scriptNames == [
             "build_fails.sh",
@@ -75,12 +81,12 @@ struct XCHookFileTests {
             "testing_succeeds.sh"
         ])
         for scriptName in scriptNames {
-            let scriptPath = xchook.runScriptsDirectoryURL.appending(path: scriptName).path
+            let scriptPath = xchook.directory.runScriptsDirectoryURL.appending(path: scriptName).path
             #expect(FileManager.default.isExecutableFile(atPath: scriptPath))
         }
 
         try xchook.removeXCHookDirectory()
-        #expect(!FileManager.default.fileExists(atPath: xchook.xchookDirectoryURL.path))
+        #expect(!FileManager.default.fileExists(atPath: xchook.directory.baseURL.path))
     }
 }
 
@@ -90,12 +96,12 @@ struct RunScriptTests {
         homeDirectoryURL: URL,
         environment: [String: String]
     ) throws {
-        let xchook = XCHook(xchookDirectoryURL: homeDirectoryURL.appending(path: ".xchook"))
+        let xchook = XCHook(directory: XCHookDirectory(baseURL: homeDirectoryURL.appending(path: ".xchook")))
         try xchook.createXCHookDirectories()
         try xchook.copyRunScripts()
 
         let process = Process()
-        process.executableURL = xchook.runScriptsDirectoryURL.appending(path: scriptName)
+        process.executableURL = xchook.directory.runScriptsDirectoryURL.appending(path: scriptName)
         process.environment = environment.merging(["HOME": homeDirectoryURL.path]) { _, new in new }
         try process.run()
         process.waitUntilExit()
@@ -108,14 +114,14 @@ struct RunScriptTests {
         for fileName in try FileManager.default.contentsOfDirectory(atPath: eventsDirectoryURL.path).sorted()
         where fileName.hasSuffix(".json") {
             let data = try Data(contentsOf: eventsDirectoryURL.appending(path: fileName))
-            let json = try #require(try JSONSerialization.jsonObject(with: data) as? [String: String])
-            let rawStatus = try #require(json["status"])
+            let json = try #require(try JSONSerialization.jsonObject(with: data) as? [String: Any])
+            let rawStatus = try #require(json["status"] as? String)
             events.append(
                 XCHookEvent(
-                    project: try #require(json["project"]),
-                    path: try #require(json["path"]),
+                    project: try #require(json["project"] as? String),
+                    path: try #require(json["path"] as? String),
                     status: try #require(XCHookStatus(rawValue: rawStatus)),
-                    timestamp: try #require(json["timestamp"])
+                    timestamp: try #require(json["timestamp"] as? Double)
                 )
             )
         }
@@ -169,10 +175,10 @@ struct EventStreamTests {
         to eventsDirectoryURL: URL,
         project: String,
         status: XCHookStatus,
-        timestamp: String
+        timestamp: Double
     ) throws {
         let json = """
-        {"project":"\(project)","path":"/tmp/\(project)","status":"\(status.rawValue)","timestamp":"\(timestamp)"}
+        {"project":"\(project)","path":"/tmp/\(project)","status":"\(status.rawValue)","timestamp":\(timestamp)}
         """
         try FileManager.default.createDirectory(at: eventsDirectoryURL, withIntermediateDirectories: true)
         try json.data(using: .utf8)?.write(to: eventsDirectoryURL.appending(path: "\(timestamp)-test.json"))
@@ -188,7 +194,7 @@ struct EventStreamTests {
             to: eventsDirectoryURL,
             project: "Stale",
             status: .buildFails,
-            timestamp: "1.0"
+            timestamp: 1.0
         )
 
         let stream = XCHookReceiver.eventStream(directoryURL: eventsDirectoryURL)
@@ -198,7 +204,7 @@ struct EventStreamTests {
             to: eventsDirectoryURL,
             project: "Fresh",
             status: .buildSucceeds,
-            timestamp: "2.0"
+            timestamp: 2.0
         )
 
         for await event in stream {

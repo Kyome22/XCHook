@@ -8,11 +8,11 @@
 import Foundation
 
 extension FileManager {
-    static var homeDirectory: String? {
+    static var homeDirectoryURL: URL {
         if let pw = getpwuid(getuid()), let home = pw.pointee.pw_dir {
-            self.default.string(withFileSystemRepresentation: home, length: strlen(home))
+            URL(filePath: self.default.string(withFileSystemRepresentation: home, length: strlen(home)))
         } else {
-            nil
+            URL(filePath: NSHomeDirectory())
         }
     }
 }
